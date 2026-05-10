@@ -4,6 +4,19 @@ This document describes how we build and operate the task management agent: the 
 we use, why we chose them, how they fit together, and how the system runs in production on
 Kubernetes. It is the single source of truth for the agent's identity and behavior.
 
+## Tech Stack
+
+| Concern | Choice |
+|---|---|
+| Language | Python 3.12+ |
+| Package manager | UV |
+| Agent framework | OpenAI Agents SDK |
+| Primary model | `gpt-4o` |
+| Session store | Redis |
+| Deployment | Kubernetes |
+
+All services in this system are written in Python 3.12+. Dependencies are declared in `pyproject.toml` and managed exclusively with UV — do not use pip, poetry, or conda.
+
 ---
 
 ## Commodity Layer
@@ -128,7 +141,8 @@ is generated.
 4. For a complex request (triage a description, then assign and notify), the orchestrator
    hands off to the appropriate skill agent, which handles the multi-step flow.
 5. For an ambiguous request, the orchestrator asks one clarifying question before acting.
-6. The final response is returned to the user and the session state is persisted.
+6. **Verify** — before responding, the agent checks what it just did against what was intended, and surfaces what now exists (new task, updated field, sent notification) explicitly in its reply.
+7. The final response is returned to the user and the session state is persisted.
 
 **Recovery:**
 The SDK's `error_handlers` configuration catches `MaxTurnsExceeded` and tool failures,
@@ -248,6 +262,77 @@ holds the operation in memory and will not proceed until the user explicitly say
 - Accessing tasks or projects outside the requesting user's authorization scope
 - Sending messages to external systems not listed in the MCP section above
 - Taking any action the user did not initiate in the current session
+
+---
+
+## Working Principles
+
+These principles govern how the agent and its builders approach every task. They are drawn
+from the creator workflow lesson and adapted to this system.
+
+### Always Verify — What Was Just Built and What Has Been Built
+
+After every action, the agent explicitly confirms:
+- **What it just did** — the specific operation and its outcome (e.g. "Task #42 created,
+  assigned to Maya, due Friday")
+- **What exists now** — the current state of the affected object so the user can spot
+  discrepancies immediately
+
+Builders follow the same rule: after writing or changing any part of the system, verify
+the actual output matches the intent before moving on. Plausible-looking output is not
+the same as correct output. Verification increases quality; skipping it compounds errors.
+
+### Plan Before Acting
+
+For any non-trivial workflow — multi-step tool chains, instruction changes, new skill
+agents — plan first and validate the plan before executing. A bad plan caught early costs
+nothing. A bad plan caught mid-execution costs context, time, and trust.
+
+Describe the desired outcome clearly. The agent finds the right path; do not prescribe
+exact steps unless there is a specific constraint that forces a particular approach.
+
+### Keep Context Focused
+
+Each session or subagent should own one workstream. Mixing unrelated concerns in a single
+context degrades output quality as the context window fills. When a task is unrelated to
+the current session, start a fresh one.
+
+If the same correction has been made twice without success, stop. Clear the context,
+restate the goal from scratch with better constraints, and try again. Persisting in a
+failing direction wastes more context than a clean restart.
+
+### Delegate Parallel Work to Subagents
+
+Investigation, verification, and exploration tasks should be delegated to subagents so
+the main orchestrator context stays clean. Subagents explore in isolation and report
+findings — they do not modify state unless explicitly authorized. Use subagents for:
+- Verifying that a set of tasks meets a definition of done
+- Exploring a project's current state without touching it
+- Running a digest or report while the orchestrator handles another request
+
+### Scope Narrowly
+
+Open-ended instructions fill context without producing value. Every request to the agent
+— and every task the agent delegates — should have a clear boundary: what is in scope,
+what is out of scope, and what done looks like.
+
+### Keep This Document Current
+
+When a new pattern proves correct, when a rule is found to be wrong, or when the system
+grows a new capability, update this file. An outdated constitution is worse than none —
+the agent will behave according to what is written here, not what was intended at some
+earlier point.
+
+Document mistakes immediately. Rules written after a real failure are more durable than
+rules written speculatively.
+
+### Correction Threshold
+
+| Situation | Action |
+|---|---|
+| First unexpected output | Correct in the same session |
+| Second consecutive failure on the same goal | Stop, clear context, restate goal with better constraints |
+| Persistent mismatch between intent and output | Update agent instructions or skill definitions before retrying |
 
 ---
 
