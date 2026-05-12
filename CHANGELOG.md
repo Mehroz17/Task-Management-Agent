@@ -4,6 +4,29 @@ All significant milestones are recorded here in reverse chronological order.
 
 ---
 
+## [2026-05-12] — CI/CD Pipeline: Verified End-to-End
+
+**What was done**
+- Granted `Mehroz17/Task-Management-Agent` repository Write access to the GHCR package
+  under package Settings → "Manage Actions access"
+- Re-triggered pipeline with a version bump (0.1.1); both jobs passed:
+  - `Run tests` ✓ — 36 tests in 10s
+  - `Build and push image` ✓ — image pushed to GHCR in 21s
+- CI/CD pipeline is now fully operational
+
+**Why the manual permissions step was needed**
+GHCR treats each container image as an independent package with its own access control.
+When the image was first pushed manually via `docker push`, it was created under your
+personal account credentials — not under the repository. GitHub Actions uses a temporary
+token (`GITHUB_TOKEN`) scoped to the repository, and that token has no write access to
+packages created outside of Actions until you explicitly grant it.
+
+The one-time fix: go to the package settings and add the repository as a collaborator
+with Write role. After that, every future push from Actions works automatically — you
+never need to do this again for this package.
+
+---
+
 ## [2026-05-12] — CI/CD Pipeline for task-mcp-server
 
 **What was done**
