@@ -14,6 +14,7 @@ Kubernetes. It is the single source of truth for the agent's identity and behavi
 | Primary model | `gpt-4o` |
 | Session store | Redis |
 | Deployment | Kubernetes |
+| Image registry | GitHub Container Registry (GHCR) — public (mirrors repo visibility) |
 
 All services in this system are written in Python 3.12+. Dependencies are declared in `pyproject.toml` and managed exclusively with UV — do not use pip, poetry, or conda.
 
@@ -282,6 +283,11 @@ Builders follow the same rule: after writing or changing any part of the system,
 the actual output matches the intent before moving on. Plausible-looking output is not
 the same as correct output. Verification increases quality; skipping it compounds errors.
 
+**Every edit or addition must be verified before reporting it as done.** For code: run it.
+For config: apply it and observe the result. For Dockerfiles: build and start the container.
+For agent instructions: check the behaviour matches the intent. Never mark something done
+based on a read-through alone.
+
 ### Plan Before Acting
 
 For any non-trivial workflow — multi-step tool chains, instruction changes, new skill
@@ -340,6 +346,17 @@ rules written speculatively.
 
 The agent system runs as a set of Kubernetes services. Each component is independently
 scalable and independently deployable.
+
+### Repository Layout Conventions
+
+| Artifact | Location |
+|---|---|
+| Kubernetes manifests and Helm charts | `deployments/` at the repository root |
+| Dockerfile for a service | Root of that service's folder (e.g., `task-mcp-server/Dockerfile`) |
+
+Every service owns its own Dockerfile. The `deployments/` folder is the single place to find all cluster configuration — no manifests are scattered inside service folders.
+
+---
 
 ### Service Layout
 
