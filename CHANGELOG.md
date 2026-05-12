@@ -4,6 +4,19 @@ All significant milestones are recorded here in reverse chronological order.
 
 ---
 
+## [2026-05-12] — Published Code and Docker Image
+
+**What was done**
+- Git code pushed to `https://github.com/Mehroz17/Task-Management-Agent` (branch: main)
+- Docker image pushed to GHCR: `ghcr.io/mehroz17/task-management-agent/task-mcp-server:latest`
+- Authenticated Docker with GHCR via `gh` CLI token (`write:packages` scope)
+
+**Verified**
+- Push succeeded, image digest: `sha256:bd106cb11f766f7ae41e0bdd6de2c9caf4d5026096bf466e10fea4cc40063722`
+- Image visible under repo Packages tab on GitHub
+
+---
+
 ## [2026-05-12] — Task MCP Server: Production Dockerfile
 
 **What was done**
