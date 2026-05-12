@@ -20,5 +20,3 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["src", "tests"]
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/task_mcp"]
