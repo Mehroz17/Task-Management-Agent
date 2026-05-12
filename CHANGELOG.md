@@ -4,6 +4,21 @@ All significant milestones are recorded here in reverse chronological order.
 
 ---
 
+## [2026-05-12] — CI/CD Pipeline for task-mcp-server
+
+**What was done**
+- Added `.github/workflows/task-mcp-server.yml` — GitHub Actions workflow that automatically
+  builds and publishes the Docker image whenever `task-mcp-server/` code changes
+- Two jobs: `test` (runs pytest) → `publish` (builds and pushes image to GHCR)
+- Triggered only on pushes to `main` that touch `task-mcp-server/**` — repo-level changes
+  (agent.md, CHANGELOG.md, etc.) do not trigger it
+- Image tagged with both `:latest` and `:sha-<commit>` on every successful run
+
+**Verified**
+- Workflow file pushed to GitHub, visible under repo Actions tab
+
+---
+
 ## [2026-05-12] — Published Code and Docker Image
 
 **What was done**
