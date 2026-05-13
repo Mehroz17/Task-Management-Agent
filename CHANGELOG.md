@@ -4,6 +4,73 @@ All significant milestones are recorded here in reverse chronological order.
 
 ---
 
+## [2026-05-14] — task-agent: Step 2 Tests Passing + Tracing + Session Memory
+
+**What was done**
+- Added OpenAI tracing to `hello_sandbox.py`: `set_tracing_export_api_key(OPENAI_API_KEY)` — traces visible at platform.openai.com/traces even when using Gemini as inference model
+- Added `SQLiteSession("hello_sandbox_session")` for multi-turn memory — agent recalls Turn 1 when asked in Turn 2
+- Verified Step 1 script runs two turns successfully:
+  - Turn 1: agent writes `outputs/hello.txt` with "Hello from Gemini inside a sandbox!"
+  - Turn 2: agent recalls file name and content from session history
+- Wrote `src/test_hello_sandbox.py` with 5 tests covering: model wiring, no errors, file confirmed, sandbox isolation, session memory
+- Restructured tests to use `module-scoped` pytest fixtures (`turn1_result`, `session_results`) to share API calls — reduces 5 separate API calls to 3, staying under Gemini free tier limit (5 req/min)
+- **All 5 tests passed** in 10.6s: `5 passed in 10.63s`
+
+**Next:** Step 3 — connect SandboxAgent to `task-mcp-server` via `MCPServerStreamableHttp`
+
+---
+
+## [2026-05-13] — task-agent: Step 1 Hello World Sandbox Setup
+
+**What was done**
+- Created `task-agent/` package at repo root (separate from `task-mcp-server/`)
+- Package structure: `pyproject.toml`, `.env.example`, `.gitignore`, `src/hello_sandbox.py`
+- Dependencies: `openai-agents==0.17.2`, `python-dotenv` — installed via `uv sync`
+- Discovered that SDK docs (llms.txt) had outdated class names; verified correct imports
+  from the installed package directly:
+  - `Filesystem` / `Shell` (not `FilesystemCapability` / `ShellCapability`)
+  - `Dir` from `agents.sandbox.entries` (not `DirEntry`)
+  - `UnixLocalSandboxClient` from `agents.sandbox.sandboxes.unix_local`
+- Model chosen: `gemini-3-flash-preview` via Gemini OpenAI-compatible endpoint
+  (`https://generativelanguage.googleapis.com/v1beta/openai/`)
+- Secrets in `.env` (local dev) — `GEMINI_API_KEY`, `TASK_MCP_URL`
+- SDK tracing disabled (`set_tracing_disabled(True)`) — tracing targets OpenAI by default
+
+**Next:** Run `uv run python src/hello_sandbox.py`, verify agent writes `outputs/hello.txt`
+inside the sandbox, then move to Step 2 (testing).
+
+---
+
+## [2026-05-13] — OpenAI Agents SDK Study: Simple Agents vs Sandboxed Agents
+
+**What was done**
+- Studied the OpenAI Agents SDK in full, including the April 2026 v0.14 release
+- Created `spc/tasks-agents/open-sdk-study.md` — 16-section study note covering:
+  - Core primitives: `Agent`, `Runner`, handoffs, `.as_tool()`, parallel execution
+  - MCP integration via `MCPServerStreamableHttp`
+  - Sessions (`SQLiteSession` → `RedisSession`), context injection, guardrails, structured output
+  - v0.14 additions: Model-Native Harness, Native Sandbox Agents, Subagent pattern,
+    `AGENTS.md`, Skills, `ShellTool`, `ApplyPatchTool`, 100+ non-OpenAI LLMs
+  - Full mapping from `agent.md` concepts to SDK v0.14 primitives
+- Clarified the distinction between Simple Agents and Sandboxed Agents:
+  - Simple Agent (`Agent` + function tools / MCP) — for API orchestration, text workflows
+  - Sandboxed Agent (`SandboxAgent`) — for real filesystem, shell, long-horizon compute work
+
+**Note: OpenAI SDK Architecture Shift (April 15, 2026)**
+OpenAI significantly updated its Agents SDK, transitioning from a simpler chatbot-focused
+architecture to one that natively supports sandboxed agents. The new SDK ships a
+model-native harness, first-class sandbox execution across 7 providers, the subagent
+pattern as a runtime primitive, and standardized agent primitives (AGENTS.md, Skills,
+ShellTool, ApplyPatchTool). This is a foundational shift — agents are no longer just
+LLMs with function tools; they are now capable of owning a real compute environment.
+
+**Decision**
+The task management system uses **Simple Agents** with `MCPServerStreamableHttp` — no
+sandbox needed because the `task-mcp-server` is the compute layer. Sandboxed agents are
+deferred to future skills (e.g., code review, file report generation).
+
+---
+
 ## [2026-05-12] — CI/CD Pipeline: Verified End-to-End
 
 **What was done**
