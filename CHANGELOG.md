@@ -4,6 +4,30 @@ All significant milestones are recorded here in reverse chronological order.
 
 ---
 
+## [2026-05-14] — Kubernetes Manifests: task-mcp-server
+
+**What was done**
+- Analyzed `task-mcp-server` characteristics for K8s deployment:
+  - FastMCP Streamable HTTP on port 8000, `stateless_http=True`
+  - In-memory store — single replica required (no shared state across pods)
+  - Non-root `mcp` user already set in Dockerfile — clean security baseline
+  - No external dependencies, no secrets needed
+- Decided dev path: 1 replica, ephemeral in-memory state, no HPA, no PVC
+- Created `deployments/task-mcp-deploy/` at repo root with 2 manifest files:
+  - `namespace.yaml` — `task-mcp` namespace with `app.kubernetes.io` labels
+  - `deployment.yaml` — 4 resources in one file (ConfigMap + ServiceAccount + Deployment + Service):
+    - **ConfigMap** (`task-mcp-config`): externalises `MCP_HOST` and `MCP_PORT`
+    - **ServiceAccount** (`task-mcp-sa`): dedicated SA, `automountServiceAccountToken: false`
+    - **Deployment**: pinned image `ghcr.io/mehroz17/task-management-agent/task-mcp-server:sha-9e143707c001d6d789fe4d643652debd8ad4f239`, `tcpSocket` liveness + readiness probes (no HTTP health endpoint), resource limits (50m/64Mi req, 250m/256Mi lim), `readOnlyRootFilesystem: true` with `/tmp` emptyDir volume, `seccompProfile: RuntimeDefault`, drop ALL capabilities
+    - **Service**: ClusterIP on port 8000
+- Deliberate omissions: no RBAC Role/RoleBinding (server makes no K8s API calls), no NetworkPolicy (course project), no Ingress (ClusterIP sufficient), no HPA (in-memory store)
+- Local access pattern: `kubectl port-forward svc/task-mcp 8000:8000 -n task-mcp`
+- In-cluster access pattern for task-agent: `TASK_MCP_URL=http://task-mcp.task-mcp.svc.cluster.local:8000/mcp`
+
+**Next:** Apply manifests to local cluster and verify rollout
+
+---
+
 ## [2026-05-14] — task-agent: Step 2 Tests Passing + Tracing + Session Memory
 
 **What was done**

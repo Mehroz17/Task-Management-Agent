@@ -41,7 +41,7 @@ def build_agent() -> SandboxAgent:
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
     )
     model = OpenAIChatCompletionsModel(
-        model="gemini-3-flash-preview",
+        model="gemini-3.1-flash-lite",
         openai_client=gemini_client,
     )
     return SandboxAgent(
@@ -102,7 +102,7 @@ def test_gemini_model_is_used():
     """No API call — just checks agent config."""
     agent = build_agent()
     assert isinstance(agent.model, OpenAIChatCompletionsModel)
-    assert agent.model.model == "gemini-3-flash-preview"
+    assert agent.model.model == "gemini-3.1-flash-lite"
 
 
 @pytest.mark.asyncio

@@ -38,7 +38,7 @@ def build_model() -> OpenAIChatCompletionsModel:
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
     )
     return OpenAIChatCompletionsModel(
-        model="gemini-3-flash-preview",
+        model="gemini-3.1-flash-lite",
         openai_client=gemini_client,
     )
 
@@ -74,7 +74,7 @@ async def main() -> None:
 
     print("=" * 55)
     print("  Step 1 — Hello World Sandbox Agent")
-    print("  Model  : gemini-3-flash-preview")
+    print("  Model  : gemini-3.1-flash-lite")
     print("  Tracing: OpenAI dashboard (platform.openai.com/traces)")
     print("  Session: hello_sandbox_session (SQLite)")
     print("=" * 55)
