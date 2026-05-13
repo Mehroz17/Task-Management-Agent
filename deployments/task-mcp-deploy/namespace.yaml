@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: task-mcp
+  labels:
+    app.kubernetes.io/name: task-mcp
+    app.kubernetes.io/part-of: task-management-agent
