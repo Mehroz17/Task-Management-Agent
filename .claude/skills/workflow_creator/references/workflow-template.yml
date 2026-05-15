@@ -1,0 +1,67 @@
+name: <service-name> CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "<service-dir>/**"
+      - ".github/workflows/<service-name>.yml"
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/<owner>/<repo>/<service-name>
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: <service-dir>
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run tests
+        # Add env block only if test files read env vars at module level.
+        # Use dummy values — these satisfy imports, no real API call is made.
+        # env:
+        #   SOME_API_KEY: dummy
+        run: uv run pytest <test-target> -v
+
+  publish:
+    name: Build and push image
+    needs: test
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: <service-dir>
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:sha-${{ github.sha }}

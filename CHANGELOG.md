@@ -4,6 +4,53 @@ All significant milestones are recorded here in reverse chronological order.
 
 ---
 
+## [2026-05-15] — New Skill: workflow_creator
+
+**What was done**
+- Created `.claude/skills/workflow_creator/` skill to codify the Python + UV + GHCR CI/CD pipeline process
+- Captures every lesson learned from setting up task-mcp-server and task-agent pipelines
+- Two files:
+  - `SKILL.md` — 7-step workflow: read service → Dockerfile (delegates to `multi-stage-dockerfile`) → `.dockerignore` → workflow authoring → local build + smoke test → manual first push → one-time GHCR permissions
+  - `references/workflow-template.yml` — ready-to-fill GitHub Actions template with correct `permissions` blocks, dual-tag strategy, and env dummy comment built in
+- Bakes in all failure patterns as a common failures table: `KeyError` at pytest collection, `permission_denied: write_package`, path trigger not firing, `testpaths` misconfiguration
+- Security checklist included: pin `uv` version, explicit `permissions` on both jobs, no real secrets in YAML, `.env` in `.dockerignore`, non-root user
+- Originally named `python-ghcr-cicd`, renamed to `workflow_creator`
+
+---
+
+## [2026-05-15] — task-agent: Dockerfile, CI/CD Pipeline, and Security Review
+
+**What was done**
+- Authored multi-stage `Dockerfile` for `task-agent/` (identical pattern to task-mcp-server):
+  - Builder stage: UV installs prod deps into `.venv`
+  - Runtime stage: `python:3.13-slim`, non-root `agent` system user, only `.venv` + `src/`
+  - No EXPOSE or HEALTHCHECK — agent is a one-shot script, not a server
+  - CMD: `python src/task_mcp_sandbox.py` (requires `GEMINI_API_KEY`, `OPENAI_API_KEY`, `TASK_MCP_URL` at runtime)
+- Added `.dockerignore` excluding `.venv`, `.env`, `__pycache__`, `dist`
+- Fixed `pyproject.toml` bug: `testpaths` was `["tests"]` but all tests live in `src/`— corrected to `["src"]`
+- Built and smoke-tested image locally (`all imports OK`)
+- Pushed manually to `ghcr.io/mehroz17/task-management-agent/task-agent` with `:latest` and `:sha-<commit>` tags
+- Granted repository write access to new GHCR package (same one-time manual step as task-mcp-server)
+- Created `.github/workflows/task-agent.yml`:
+  - Triggers: push to `task-agent/**` or `.github/workflows/task-agent.yml`, plus `workflow_dispatch`
+  - `test` job: runs `test_gemini_model_is_used` (config-only, no live API calls) with dummy env keys so module imports without crashing
+  - `publish` job: builds and pushes to GHCR with `:latest` and `:sha-<commit>` tags
+  - Pipeline fully green end-to-end
+
+**Bugs found and fixed during CI**
+- `OPENAI_API_KEY` read at module import time → added `OPENAI_API_KEY: dummy` to test env
+- `GEMINI_API_KEY` read inside `build_agent()` even for config-only test → added `GEMINI_API_KEY: dummy`
+- Fix commit touched only `.github/workflows/` (outside `task-agent/**`) → added workflow file to path trigger and `workflow_dispatch`
+
+**Security review findings**
+- `uv:latest` in both Dockerfiles — unpinned builder image, supply chain risk (not yet fixed)
+- `test` job in both workflows missing `permissions` block — inherits broad default token permissions (not yet fixed)
+- No NetworkPolicy in K8s — intentional for course project
+
+**Next:** Fix the two security lapses (pin `uv` version, add `permissions: contents: read` to test jobs)
+
+---
+
 ## [2026-05-14] — Kubernetes Manifests: task-mcp-server
 
 **What was done**
