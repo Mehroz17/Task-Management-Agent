@@ -27,6 +27,8 @@ jobs:
         run: uv sync --frozen
 
       - name: Run tests
+        env:
+          OPENAI_API_KEY: dummy
         run: uv run pytest src/test_hello_sandbox.py::test_gemini_model_is_used -v
 
   publish:
