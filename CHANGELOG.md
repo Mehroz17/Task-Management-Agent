@@ -4,6 +4,91 @@ All significant milestones are recorded here in reverse chronological order.
 
 ---
 
+
+
+**Next:** Add RBAC and NetworkPolicies, point task-agent at a long-running agent server instead of the demo script
+
+---
+
+## [2026-05-17] — End-to-End Cluster Test: All Services Verified
+
+**What was done**
+- Populated Kubernetes Secret `task-agent-secrets` with real API keys sourced from `task-agent/.env`
+  via `kubectl create secret --from-literal` with `--dry-run=client -o yaml | kubectl apply -f -`
+- Restarted `task-agent` deployment to pick up the new secret: `kubectl rollout restart deployment/task-agent`
+- Streamed full pod logs for both services to verify correct behaviour
+
+**Infrastructure results**
+
+| Resource | Result |
+|---|---|
+| `task-mcp-server` pod | `1/1 Running` — healthy throughout |
+| `task-mcp-server` ClusterIP service | Reachable inside cluster via DNS |
+| `task-agent` pod | `1/1 Running` → exited cleanly after 2-turn script |
+| Secret injection (`GEMINI_API_KEY`, `OPENAI_API_KEY`) | Correctly mounted and consumed |
+
+**Agent execution results**
+
+*Turn 1 — Task creation via MCP:*
+- Agent resolved `http://task-mcp-server.project-task-mcp.svc.cluster.local:8000/mcp` — in-cluster DNS working
+- Called `task_create` → task created: title `"Write Step 3 integration"`, project `task-agent`, priority `high`
+- Task ID returned: `19244de1-da4a-4035-b799-95f4b80e4039`
+- Agent called `task_get` with the returned ID to confirm persistence — task confirmed in store
+- Wrote `"Created task: Write Step 3 integration (id: 19244de1-...)"` to `outputs/summary.txt` inside the sandbox
+- Confirmed the write with `cat outputs/summary.txt`
+- **Result: PASS**
+
+*Turn 2 — Project view via MCP:*
+- Agent called `project_view` with project name `task-agent`
+- Returned 1 task in `todo` status — consistent with Turn 1 creation
+- Session memory (SQLiteSession) carried context across turns — agent recalled what it created
+- **Result: PASS**
+
+**What the test confirmed**
+- In-cluster DNS resolution works — agent reached the MCP server by Kubernetes service name
+- FastMCP Streamable HTTP transport (`/mcp` endpoint) functions correctly inside the cluster
+- `task-mcp-server` in-memory store persisted the task across two separate MCP calls in the same session
+- Gemini model (`gemini-3.1-flash-lite`) is reachable from inside the pod (external HTTPS egress works)
+- OpenAI tracing active — traces sent to OpenAI dashboard using `OPENAI_API_KEY`
+- Kubernetes Secret injection works — both keys consumed without errors
+
+**Bug found and fixed during apply**
+- Both pods started with `CreateContainerConfigError`: `container has runAsNonRoot and image has non-numeric user (mcp/agent), cannot verify user is non-root`
+- Root cause: Dockerfiles use named users (`USER mcp`, `USER agent`) but Kubernetes requires a numeric UID to enforce `runAsNonRoot: true`
+- Fix: added `runAsUser: 999` and `runAsGroup: 999` to both deployment securityContexts (confirmed via `docker run ... id`)
+- Manifests updated and re-applied — both pods came up clean on second apply
+
+**Note on secret management**
+- The Kubernetes Secret is not automatically linked to `task-agent/.env` — it was populated manually
+- To re-sync after key rotation: `export $(grep -v '^#' task-agent/.env | xargs) && kubectl create secret generic task-agent-secrets --from-literal=GEMINI_API_KEY="$GEMINI_API_KEY" --from-literal=OPENAI_API_KEY="$OPENAI_API_KEY" --namespace=project-task-mcp --dry-run=client -o yaml | kubectl apply -f -`
+
+---
+
+## [2026-05-17] — Kubernetes Deployment Plan: project-mcp namespace
+
+**What was done**
+- Planned full Kubernetes deployment for the two production images:
+  - `ghcr.io/mehroz17/task-management-agent/task-mcp-server:sha-9e143707c001d6d789fe4d643652debd8ad4f239`
+  - `ghcr.io/mehroz17/task-management-agent/task-agent:sha-6fe471a4054a357f9eee850c2fd5a373ac58fdb7`
+- Target environment: local cluster (kind / minikube)
+- Namespace: `project-task-mcp` (manually created via `kubectl create namespace project-task-mcp`)
+- Manifest layout (per `agent.md` convention — all manifests under `deployments/`):
+  - `deployments/task-mcp-server/deployment.yaml` — Deployment, port 8000
+  - `deployments/task-mcp-server/service.yaml` — ClusterIP
+  - `deployments/task-agent/secret.yaml` — template for `GEMINI_API_KEY` + `OPENAI_API_KEY`
+  - `deployments/task-agent/deployment.yaml` — Deployment, env wired to MCP server in-cluster DNS
+  - `namespace.yaml` skipped — namespace `project-task-mcp` was created manually
+- Deliberate omissions for this phase: no RBAC (ServiceAccount / Role / RoleBinding), no NetworkPolicies
+- Security context decisions:
+  - `task-mcp-server`: `readOnlyRootFilesystem: true`, `runAsNonRoot: true` — stateless, no disk writes
+  - `task-agent`: `readOnlyRootFilesystem: false` — SQLiteSession writes `.db` file to `/app`; `runAsNonRoot: true`
+- task-agent deployed as a Deployment (future-proof for long-running agent); current image runs a 2-turn script and exits, so pod will CrashLoopBackOff — expected in dev, check logs per-run
+- In-cluster MCP URL for task-agent: `http://task-mcp-server.project-task-mcp.svc.cluster.local:8000/mcp`
+
+**Next:** Write manifest files and apply to local cluster
+
+---
+
 ## [2026-05-15] — New Skill: workflow_creator
 
 **What was done**

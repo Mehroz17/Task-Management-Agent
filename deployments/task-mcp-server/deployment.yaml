@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-mcp-server
+  namespace: project-task-mcp
+  labels:
+    app: task-mcp-server
+    app.kubernetes.io/part-of: task-management-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: task-mcp-server
+  template:
+    metadata:
+      labels:
+        app: task-mcp-server
+    spec:
+      containers:
+        - name: task-mcp-server
+          image: ghcr.io/mehroz17/task-management-agent/task-mcp-server:sha-9e143707c001d6d789fe4d643652debd8ad4f239
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]

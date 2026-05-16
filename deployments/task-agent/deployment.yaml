@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-agent
+  namespace: project-task-mcp
+  labels:
+    app: task-agent
+    app.kubernetes.io/part-of: task-management-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: task-agent
+  template:
+    metadata:
+      labels:
+        app: task-agent
+    spec:
+      containers:
+        - name: task-agent
+          image: ghcr.io/mehroz17/task-management-agent/task-agent:sha-6fe471a4054a357f9eee850c2fd5a373ac58fdb7
+          env:
+            - name: TASK_MCP_URL
+              value: "http://task-mcp-server.project-task-mcp.svc.cluster.local:8000/mcp"
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: task-agent-secrets
+                  key: GEMINI_API_KEY
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: task-agent-secrets
+                  key: OPENAI_API_KEY
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            readOnlyRootFilesystem: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
