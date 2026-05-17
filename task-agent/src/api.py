@@ -27,7 +27,7 @@ set_tracing_export_api_key(os.environ["OPENAI_API_KEY"])
 
 MCP_URL = os.environ.get("TASK_MCP_URL", "http://127.0.0.1:8000/mcp")
 
-SESSIONS_DIR = Path("/app/sessions")
+SESSIONS_DIR = Path("/tmp/sessions")
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 
