@@ -18,7 +18,8 @@ spec:
     spec:
       containers:
         - name: task-mcp-server
-          image: ghcr.io/mehroz17/task-management-agent/task-mcp-server:sha-9e143707c001d6d789fe4d643652debd8ad4f239
+          image: ghcr.io/mehroz17/task-management-agent/task-mcp-server:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           resources:

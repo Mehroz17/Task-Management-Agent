@@ -7,8 +7,10 @@ metadata:
     app: task-agent
     app.kubernetes.io/part-of: task-management-agent
 spec:
+  type: NodePort
   selector:
     app: task-agent
   ports:
     - port: 8000
       targetPort: 8000
+      nodePort: 30090

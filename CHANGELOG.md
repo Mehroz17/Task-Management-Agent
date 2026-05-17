@@ -6,7 +6,30 @@ All significant milestones are recorded here in reverse chronological order.
 
 
 
-**Next:** Add RBAC and NetworkPolicies; update task-agent Kubernetes deployment to run the FastAPI server instead of the one-shot script
+**Next:** Add RBAC and NetworkPolicies
+
+---
+
+## [2026-05-17] — GHCR Packages Made Public + Deployments Switched to :latest
+
+**What was done**
+- Made both GHCR packages public — no credentials or imagePullSecrets required
+  - `ghcr.io/mehroz17/task-management-agent/task-agent`
+  - `ghcr.io/mehroz17/task-management-agent/task-mcp-server`
+- Updated both deployment manifests to use `:latest` + `imagePullPolicy: Always`
+- Removed `command:` override from task-agent deployment — Dockerfile CMD is now correct (`fastapi run src/api.py`)
+- Added NodePort Service for task-agent on port `30090` — API reachable at `http://localhost:30090`
+- Added `kubectl rollout restart` as the standard update flow after CI pushes a new image
+- Updated `README.md` with public image note, image table, and Kubernetes deploy instructions
+
+**Update flow going forward**
+```
+push code → CI builds + pushes :latest → kubectl rollout restart deployment/<name> -n project-task-mcp
+```
+
+**Verified**
+- `GET http://localhost:30090/health` → `{"status": "ok", "mcp_url": "..."}` ✓
+- `POST http://localhost:30090/agent/run` → task created via MCP, UUID returned ✓
 
 ---
 

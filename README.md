@@ -84,6 +84,8 @@ docker pull ghcr.io/mehroz17/task-management-agent/task-mcp-server:latest
 docker run -p 8000:8000 ghcr.io/mehroz17/task-management-agent/task-mcp-server:latest
 ```
 
+Both GHCR packages are public — no authentication required to pull.
+
 ### Connect to Claude Code
 
 Add this to your `.mcp.json`:
@@ -146,13 +148,32 @@ The system follows a two-layer design:
 
 ## CI/CD
 
-Every push to `task-mcp-server/` on `main` triggers the pipeline:
+Every push to `task-agent/**` or `task-mcp-server/**` on `main` triggers the respective pipeline:
 
-1. Runs all 36 tests
+1. Runs tests
 2. Builds the Docker image
 3. Pushes to GHCR with `:latest` and `:sha-<commit>` tags
 
-Image: `ghcr.io/mehroz17/task-management-agent/task-mcp-server`
+Both images are **public** — no credentials needed to pull.
+
+| Image | Registry |
+|---|---|
+| `task-mcp-server` | `ghcr.io/mehroz17/task-management-agent/task-mcp-server` |
+| `task-agent` | `ghcr.io/mehroz17/task-management-agent/task-agent` |
+
+### Deploy to Kubernetes
+
+```bash
+# Apply all manifests
+kubectl apply -f deployments/task-mcp-server/
+kubectl apply -f deployments/task-agent/
+
+# After a new image is pushed by CI, pick it up with:
+kubectl rollout restart deployment/task-agent -n project-task-mcp
+kubectl rollout restart deployment/task-mcp-server -n project-task-mcp
+```
+
+API available at `http://localhost:30090` once the cluster is running.
 
 ---
 
