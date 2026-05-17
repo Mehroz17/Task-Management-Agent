@@ -10,6 +10,23 @@ All significant milestones are recorded here in reverse chronological order.
 
 ---
 
+## [2026-05-17] — Fix Multi-Turn Session Memory
+
+**Root cause**
+`SQLiteSession` defaults to `db_path=":memory:"` — an in-memory database destroyed at the end of every HTTP request. Every call to `POST /agent/run` got a fresh empty session regardless of the `session_id` passed.
+
+**Fix**
+- Write each session to `/tmp/sessions/{session_id}.db` (absolute file path, always writable by the non-root `agent` user)
+- `/app/sessions` was attempted first but raised `PermissionError` — `agent` user (UID 999) has no write access to `/app`
+
+**Verified**
+- Turn 1: `"my name is Alen and I want you to create a task to bring fruits"` → task created ✓
+- Turn 2 (same `session_id`): `"whats my name and what have we done so far?"` → agent recalled name and prior task ✓
+
+**Note:** Sessions survive across requests but are lost on pod restart (stored in `/tmp`). A PVC would be needed for true cross-restart persistence.
+
+---
+
 ## [2026-05-17] — GHCR Packages Made Public + Deployments Switched to :latest
 
 **What was done**
