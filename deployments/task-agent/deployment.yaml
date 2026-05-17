@@ -20,7 +20,6 @@ spec:
         - name: task-agent
           image: ghcr.io/mehroz17/task-management-agent/task-agent:latest
           imagePullPolicy: Always
-          command: ["fastapi", "run", "src/api.py", "--host", "0.0.0.0", "--port", "8000"]
           ports:
             - containerPort: 8000
           livenessProbe:

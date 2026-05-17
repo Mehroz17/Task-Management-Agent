@@ -25,5 +25,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 USER agent
 
+EXPOSE 8000
+
 # Requires at runtime: GEMINI_API_KEY, OPENAI_API_KEY, TASK_MCP_URL
-CMD ["python", "src/task_mcp_sandbox.py"]
+CMD ["fastapi", "run", "src/api.py", "--host", "0.0.0.0", "--port", "8000"]
