@@ -7,10 +7,50 @@ An AI-powered task management system built on the OpenAI Agents SDK, deployed on
 | Component | Status | Details |
 |---|---|---|
 | `task-mcp-server` | ✅ Complete | MCP server with 6 workflow tools, Streamable HTTP transport |
+| `task-agent` | ✅ Complete | SandboxAgent + FastAPI interface (`src/api.py`), multi-turn via SQLiteSession |
 | CI/CD pipeline | ✅ Complete | GitHub Actions — test → build → push to GHCR on every push |
 | Agent constitution | ✅ Complete | `agent.md` — full architecture, rules, and deployment spec |
-| Orchestrator agent | 🔜 Planned | OpenAI Agents SDK, `gpt-4o` |
-| Kubernetes manifests | 🔜 Planned | Deployments, Services, Helm charts in `deployments/` |
+| Kubernetes manifests | ✅ Complete | Deployments, Services in `deployments/` — cluster verified |
+| RBAC + NetworkPolicies | 🔜 Planned | ServiceAccount, Role, NetworkPolicy per namespace |
+
+---
+
+## task-agent
+
+The task agent is a `SandboxAgent` (OpenAI Agents SDK) that connects to `task-mcp-server` over MCP and exposes an HTTP interface via FastAPI.
+
+### Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/health` | Liveness check — returns MCP URL |
+| `POST` | `/agent/run` | Run the agent with a prompt; optional `session_id` for multi-turn |
+
+### Request / Response
+
+```json
+// POST /agent/run
+{ "message": "Create a task titled 'Fix bug' in project my-app, priority high",
+  "session_id": "optional-uuid-for-multi-turn" }
+
+// Response
+{ "session_id": "abc-123", "output": "Task created with id ...", "new_session": true }
+```
+
+### Run locally
+
+```bash
+# 1. Start task-mcp-server first (see below)
+# 2. In task-agent/
+cd task-agent
+cp .env.example .env   # fill in GEMINI_API_KEY, OPENAI_API_KEY
+fastapi dev src/api.py --port 8090
+# API at http://127.0.0.1:8090, docs at http://127.0.0.1:8090/docs
+```
+
+### Multi-turn sessions
+
+Omit `session_id` for a fresh one-shot run. Pass the returned `session_id` back on subsequent calls — the agent remembers prior turns via SQLite.
 
 ---
 

@@ -6,7 +6,36 @@ All significant milestones are recorded here in reverse chronological order.
 
 
 
-**Next:** Add RBAC and NetworkPolicies, point task-agent at a long-running agent server instead of the demo script
+**Next:** Add RBAC and NetworkPolicies; update task-agent Kubernetes deployment to run the FastAPI server instead of the one-shot script
+
+---
+
+## [2026-05-17] — task-agent: FastAPI Interface
+
+**What was done**
+- Added `fastapi[standard]` dependency to `task-agent/pyproject.toml` via `uv add`
+- Created `task-agent/src/api.py` — single-file FastAPI wrapper around the existing `SandboxAgent`:
+  - **Lifespan** opens one `MCPServerStreamableHttp` connection on startup; agent and `RunConfig` stored in `app.state`
+  - `GET /health` — liveness check, returns MCP URL
+  - `POST /agent/run` — accepts `{message, session_id?}`, runs `Runner.run`, returns `{session_id, output, new_session}`; `session_id` auto-generated (UUID) when omitted for multi-turn via `SQLiteSession`
+- Added `[tool.fastapi] entrypoint = "api:app"` to `pyproject.toml`
+- Updated `README.md`: task-agent marked complete, endpoints documented with request/response examples
+
+**Design decisions**
+- Two endpoints only — agent handles all task operations (create, list, get) via natural language; no need to expose raw MCP tools as REST
+- Single file — the agent logic was already written; the API is a thin wrapper
+- `async def` endpoints — `Runner.run` is fully async
+- Agent instance shared across requests — `SandboxAgent` is stateless per run (each call gets its own ephemeral sandbox)
+
+**Verified end-to-end**
+- `GET /health` → `{"status": "ok", "mcp_url": "http://127.0.0.1:8000/mcp"}`
+- `POST /agent/run` with `"Create a task titled 'Agent run test'..."` → agent called `task_create`, confirmed via `task_get`, wrote `summary.txt` in sandbox, returned task id and confirmation
+
+**Run**
+```bash
+cd task-agent && fastapi dev src/api.py --port 8090
+# → http://127.0.0.1:8090/docs
+```
 
 ---
 
