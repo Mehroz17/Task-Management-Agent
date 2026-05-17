@@ -1,6 +1,7 @@
 import os
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -25,6 +26,9 @@ load_dotenv()
 set_tracing_export_api_key(os.environ["OPENAI_API_KEY"])
 
 MCP_URL = os.environ.get("TASK_MCP_URL", "http://127.0.0.1:8000/mcp")
+
+SESSIONS_DIR = Path("/app/sessions")
+SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _build_agent(mcp: MCPServerStreamableHttp) -> SandboxAgent:
@@ -96,7 +100,7 @@ async def agent_run(body: AgentRunRequest) -> AgentRunResponse:
     result = await Runner.run(
         app.state.agent,
         body.message,
-        session=SQLiteSession(session_id),
+        session=SQLiteSession(session_id, db_path=SESSIONS_DIR / f"{session_id}.db"),
         run_config=app.state.run_config,
     )
     return AgentRunResponse(session_id=session_id, output=result.final_output, new_session=new_session)
