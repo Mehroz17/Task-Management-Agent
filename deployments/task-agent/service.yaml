@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-agent
+  namespace: project-task-mcp
+  labels:
+    app: task-agent
+    app.kubernetes.io/part-of: task-management-agent
+spec:
+  selector:
+    app: task-agent
+  ports:
+    - port: 8000
+      targetPort: 8000

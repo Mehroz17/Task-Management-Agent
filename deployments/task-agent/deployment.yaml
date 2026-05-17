@@ -18,7 +18,23 @@ spec:
     spec:
       containers:
         - name: task-agent
-          image: ghcr.io/mehroz17/task-management-agent/task-agent:sha-6fe471a4054a357f9eee850c2fd5a373ac58fdb7
+          image: ghcr.io/mehroz17/task-management-agent/task-agent:latest
+          imagePullPolicy: Always
+          command: ["fastapi", "run", "src/api.py", "--host", "0.0.0.0", "--port", "8000"]
+          ports:
+            - containerPort: 8000
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
           env:
             - name: TASK_MCP_URL
               value: "http://task-mcp-server.project-task-mcp.svc.cluster.local:8000/mcp"
