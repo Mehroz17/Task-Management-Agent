@@ -1,0 +1,38 @@
+name: notification-api CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "notification-api/**"
+
+env:
+  IMAGE: ghcr.io/mehroz17/task-management-agent/notification-api
+
+jobs:
+  publish:
+    name: Build and push image
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: notification-api
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:sha-${{ github.sha }}

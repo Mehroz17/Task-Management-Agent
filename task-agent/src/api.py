@@ -1,8 +1,10 @@
+import logging
 import os
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from openai import AsyncOpenAI
@@ -26,9 +28,38 @@ load_dotenv()
 set_tracing_export_api_key(os.environ["OPENAI_API_KEY"])
 
 MCP_URL = os.environ.get("TASK_MCP_URL", "http://127.0.0.1:8000/mcp")
+NOTIFICATION_URL = os.environ.get(
+    "NOTIFICATION_API_URL",
+    "http://notification-api.project-task-mcp.svc.cluster.local:8090",
+)
 
 SESSIONS_DIR = Path("/tmp/sessions")
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+
+logger = logging.getLogger(__name__)
+
+
+async def _fetch_unread_notifications() -> list[dict]:
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            r = await client.get(
+                f"{NOTIFICATION_URL}/notifications",
+                params={"status": "unread"},
+            )
+            if r.status_code == 200:
+                return r.json()
+    except Exception:
+        logger.warning("Could not reach notification-api — skipping reminders")
+    return []
+
+
+async def _mark_notifications_read(ids: list[str]) -> None:
+    async with httpx.AsyncClient(timeout=3.0) as client:
+        for nid in ids:
+            try:
+                await client.post(f"{NOTIFICATION_URL}/notifications/{nid}/read")
+            except Exception:
+                pass
 
 
 def _build_agent(mcp: MCPServerStreamableHttp) -> SandboxAgent:
@@ -97,9 +128,19 @@ async def health() -> dict:
 async def agent_run(body: AgentRunRequest) -> AgentRunResponse:
     new_session = body.session_id is None
     session_id = body.session_id or str(uuid.uuid4())
+
+    notifications = await _fetch_unread_notifications()
+    message = body.message
+    if notifications:
+        lines = ["[Pending Task Reminders]"]
+        for n in notifications:
+            lines.append(f"- {n['message']}")
+        message = "\n".join(lines) + "\n\n" + body.message
+        await _mark_notifications_read([n["id"] for n in notifications])
+
     result = await Runner.run(
         app.state.agent,
-        body.message,
+        message,
         session=SQLiteSession(session_id, db_path=SESSIONS_DIR / f"{session_id}.db"),
         run_config=app.state.run_config,
     )

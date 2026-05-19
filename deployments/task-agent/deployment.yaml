@@ -37,6 +37,8 @@ spec:
           env:
             - name: TASK_MCP_URL
               value: "http://task-mcp-server.project-task-mcp.svc.cluster.local:8000/mcp"
+            - name: NOTIFICATION_API_URL
+              value: "http://notification-api.project-task-mcp.svc.cluster.local:8090"
             - name: GEMINI_API_KEY
               valueFrom:
                 secretKeyRef:

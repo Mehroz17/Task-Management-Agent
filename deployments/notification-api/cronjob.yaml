@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: notification-checker
+  namespace: project-task-mcp
+  labels:
+    app.kubernetes.io/part-of: task-management-agent
+spec:
+  schedule: "*/1 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: trigger
+              image: curlimages/curl:latest
+              args:
+                - "-s"
+                - "-X"
+                - "POST"
+                - "http://notification-api.project-task-mcp.svc.cluster.local:8090/notify/trigger"
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "32Mi"
+                limits:
+                  cpu: "100m"
+                  memory: "64Mi"

@@ -1,0 +1,16 @@
+[project]
+name = "notification-api"
+version = "0.1.0"
+description = "Deadline reminder service for task-mcp-server"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.115.0",
+    "mcp[cli]>=1.27.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+]
